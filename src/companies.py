@@ -57,10 +57,8 @@ def get_root():
     if connection:
         return connection.root
 
-    import ZODB, ZODB.FileStorage
-    storage = ZODB.FileStorage.FileStorage(database_name)
-    db = ZODB.DB(storage)
-    connection = db.open()
+    import ZODB
+    connection = ZODB.connection(database_name)
 
     return connection.root
 
