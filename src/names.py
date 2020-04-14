@@ -74,16 +74,21 @@ def add_title(to: Group, title: Title):
     to.titles.add(title.title_no)
     to._p_changed = True
 
-def iterate_titles():
+def iterate_titles(progress_callback=None):
     table = DBF('data/titles/nz-property-titles-including-owners-1.dbf', encoding='utf8')
-
-    for record in itertools.islice(table, 250000):
+    num_rows = len(table)
+    row_num = 0
+    for record in table:
         yield Title(title_owners(record), record['title_no'])
+        
+        row_num += 1
+        if progress_callback:
+            progress_callback(row_num/num_rows)
 
 def build_name_groups():
     save_every_n = 10000
     iteration = 0
-    for title in iterate_titles():
+    for title in iterate_titles(lambda progress: print(f'\rBuilding name database: {round(progress*100, 2)}%', end='')):
         last_group = None
         for name in title.names:
             group = group_for_name(name)
