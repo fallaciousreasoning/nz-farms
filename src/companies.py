@@ -106,6 +106,10 @@ def get_names_for_role(company, role):
     return people
 
 def maybe_build_database():
+    if os.path.exists(database_name):
+        print("Cache already exists, not rebuilding!")
+        return
+
     from BTrees import OOBTree
     import transaction
 
