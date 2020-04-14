@@ -7,7 +7,7 @@ if not os.path.exists(cache_path):
     os.makedirs(cache_path)
 
 data_path = 'data/nzbn'
-files_count = 1 # 5
+files_count = 5
 
 database_name = f"{cache_path}/companies.map"
 
@@ -105,7 +105,7 @@ def get_names_for_role(company, role):
 
 def maybe_build_database():
     if os.path.exists(database_name):
-        print("Cache already exists, not rebuilding!")
+        print("Company cache already exists, not rebuilding!")
         return
 
     from BTrees import OOBTree
@@ -131,4 +131,3 @@ def maybe_build_database():
     transaction.commit()
 
 maybe_build_database()
-print(has_company('DATARA CONTRACTING LIMITED'))
