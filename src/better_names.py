@@ -65,10 +65,12 @@ def maybe_build_farm_database():
     rows.sort()
 
     with open(database_name, mode='w') as f:
-        f.write('row, title_no, group_id\n')
+        f.write('row,title_no,group_id\n')
 
         for row, title_no, group_id in rows:
             f.write(f'{row},{title_no},{group_id}\n')
 
 def get_farm_database():
     maybe_build_farm_database()
+    import pandas
+    return pandas.read_csv(database_name)
