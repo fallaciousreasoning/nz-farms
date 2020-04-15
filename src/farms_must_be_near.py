@@ -40,11 +40,11 @@ database = get_farm_database()
 database['farm_id'] = pandas.Series(0, index=database.index)
 
 farm_groups = database.groupby('group_id')
-initial_groups_count = 616858 # TODO: Not this.
-processed_groups = 0
+total_rows = database.shape[0]
+processed_rows = 0
 farms_count = 0
-print("Initial Groups:", initial_groups_count)
-print()
+
+print("Initial Groups:", 616858) # TODO: Not this
 
 for group_id, group in farm_groups:
     result_groups: typing.List[FarmGroup] = []
@@ -80,13 +80,13 @@ for group_id, group in farm_groups:
 
     for farm in result_groups:
         for row in farm.rows:
+            processed_rows += 1
             database._set_value(row, "farm_id", farm.id)
             # print(farm.id, database["farm_id"][row])
             # database.at["farm_id", row] = farm.id
 
-    processed_groups += 1
     farms_count += len(result_groups)
-    print(f"\rProgress: {round(processed_groups/initial_groups_count*100, 2)}%", end='')
+    print(f"\rProgress: {round(processed_rows/total_rows*100, 2)}%", end='')
 
 print()
 print("End group counts:", farms_count);
