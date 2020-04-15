@@ -1,2 +1,3 @@
 dbfread==2.0.7
-BTrees 4.7.2
+BTrees==4.7.2
+pyshp==2.1.0
