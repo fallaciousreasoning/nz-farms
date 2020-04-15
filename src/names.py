@@ -5,7 +5,7 @@ import persistent
 import uuid
 import transaction
 
-class Title:
+class Title(persistent.Persistent):
     def __init__(self, names, title_no):
         self.names = names
         self.title_no = title_no
@@ -13,11 +13,16 @@ class Title:
     def __repr__(self):
         return f'Owners: [{", ".join(self.names)}], TitleNo: {self.title_no}'
 
+    def __eq__(self, value):
+        return value is not None and value.title_no == self.title_no
+
+    def __hash__(self):
+        return self.title_no.__hash__()
+
 class Group(persistent.Persistent):
     def __init__(self):
         self.id = uuid.uuid4().int
-        self.names = set()
-        self.titles = set()
+        self.titles: Set[Title] = set()
 
 connection = None
 def get_root():
@@ -28,6 +33,12 @@ def get_root():
     import ZODB
     connection = ZODB.connection('cache/name_groups')
     return connection.root
+
+def get_titles():
+    if not hasattr(get_root(), 'titles'):
+        from BTrees import OOBTree
+        get_root().titles = OOBTree.BTree()
+    return get_root().titles
 
 def get_names():
     if not hasattr(get_root(), 'names'):
@@ -52,10 +63,9 @@ def group_for_name(name):
     return get_groups()[group_id]
 
 def merge_groups(a: Group, b: Group):
-    for name in b.names:
-        a.names.add(name)
-        get_names()[name] = a.id
-    a.titles.update(b.titles)
+    for title in b.titles:
+        add_title(a, title)
+
     a._p_changed = True
 
     # There shouldn't be any reference to b now...
@@ -63,15 +73,11 @@ def merge_groups(a: Group, b: Group):
     return a
 
 def add_title(to: Group, title: Title):
+    get_titles()[title.title_no] = to.id
     for name in title.names:
-        try:
-            get_names()[name] = to.id
-            to.names.update(title.names)
-        except:
-            print(to.id)
-            raise
+        get_names()[name] = to.id
 
-    to.titles.add(title.title_no)
+    to.titles.add(title)
     to._p_changed = True
 
 def iterate_titles(progress_callback=None):
@@ -86,7 +92,7 @@ def iterate_titles(progress_callback=None):
             progress_callback(row_num/num_rows)
 
 def build_name_groups():
-    save_every_n = 10000
+    save_every_n = 100000
     iteration = 0
     for title in iterate_titles(lambda progress: print(f'\rBuilding name database: {round(progress*100, 2)}%', end='')):
         last_group = None
