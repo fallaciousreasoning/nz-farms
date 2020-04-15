@@ -2,6 +2,7 @@ import typing
 import uuid
 import itertools
 import os
+import pandas
 
 from names import iterate_titles, Title
 
@@ -70,7 +71,6 @@ def maybe_build_farm_database():
         for row, title_no, group_id in rows:
             f.write(f'{row},{title_no},{group_id}\n')
 
-def get_farm_database():
+def get_farm_database() -> pandas.DataFrame:
     maybe_build_farm_database()
-    import pandas
     return pandas.read_csv(database_name)
