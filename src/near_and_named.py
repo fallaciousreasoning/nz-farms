@@ -49,7 +49,6 @@ def merge_nodes(nodes: typing.List[Node]) -> Node:
         names.update(node.names)
     return Node(titles, names, new_bounds)
 
-print("Building initial tree...")
 start = time.time()
 
 # Build the tree
@@ -57,6 +56,7 @@ slice = num_titles()
 for shapeRecord in itertools.islice(iterate_titles(), slice):
     node = Node(set([shapeRecord.record.oid]), title_owners(shapeRecord.record), shapeRecord.shape.bbox)
     quad_tree.insert(node, node.bounds)
+    print(f"\rBuilding Initial Tree: {round((shapeRecord.record.oid + 1)/slice * 100,2):.2f}%", end='')
 print(f'Took {round(time.time() - start, 2)} seconds')
 print("Finding nearby...")
 merges = 0
