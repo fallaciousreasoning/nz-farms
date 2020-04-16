@@ -45,13 +45,28 @@ print("Building initial tree...")
 start = time.time()
 
 # Build the tree
-slice = 1000
+slice = 10000
 for shapeRecord in itertools.islice(iterate_titles(), slice):
     node = Node(set([shapeRecord.record.title_no]), title_owners(shapeRecord.record), shapeRecord.shape.bbox)
     quad_tree.insert(node, node.bounds)
 print(f'Took {round(time.time() - start, 2)} seconds')
 print("Finding nearby...")
 merges = 0
+nodes_processed = 0
+started_processing_at = time.time()
+note_every = 100
+
+def human_time(time: float):
+    hour_mul = 60 * 60
+    minute_mul = 60
+    hours = int(time / hour_mul)
+    time -= hours * hour_mul
+
+    minutes = int(time / minute_mul)
+    time -= minutes * minute_mul
+    seconds = int(time)
+
+    return f'{hours}h {minutes}m {seconds}s'
 for shapeRecord in itertools.islice(iterate_titles(), slice):
     record = shapeRecord.record
 
@@ -71,6 +86,14 @@ for shapeRecord in itertools.islice(iterate_titles(), slice):
         if node.names_overlap(owners):
             nodes_to_merge.append(node)
 
+    nodes_processed += 1
+    if nodes_processed % note_every == 0:
+        progress = nodes_processed / slice
+        current_time = time.time()
+        dt = current_time - started_processing_at
+        predicted_remaining = dt / progress - dt
+        print(f"\rProgress: {round(progress*100, 2):.2f}%. {human_time(predicted_remaining)} remaining\t", end='')
+
     # If the only node we found is the one this title already belongs to, do
     # nothing.
     if len(nodes_to_merge) <= 1:
@@ -87,6 +110,7 @@ for shapeRecord in itertools.islice(iterate_titles(), slice):
     # Insert the new, merged node.
     quad_tree.insert(merged_node, merged_node.bounds)
 print("Merged", merges, "nodes")
+print(f'Total time {round(time.time() - start, 2)} seconds')
 
     
 # for each node
