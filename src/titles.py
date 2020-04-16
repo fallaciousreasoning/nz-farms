@@ -15,3 +15,6 @@ def get_record(for_record: int):
 def iterate_titles() -> typing.Iterator[shapefile.ShapeRecord]:
     for i in range(len(sf)):
         yield sf.shapeRecord(i)
+
+def num_titles() -> int:
+    return sf.numRecords

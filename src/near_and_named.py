@@ -1,21 +1,29 @@
-import pyqtree
+import jqtree
 import itertools
 import typing
 
 import time
 
 from lat_lng import union, intersects, aabb
-from titles import iterate_titles
+from titles import iterate_titles, num_titles
 from title_owners import title_owners
 
 nz_bounds = (-47.401915, 172.266598, -33.984178, 177.715816)
-quad_tree = pyqtree.Index(bbox=nz_bounds, max_depth=200, max_items=100)
+quad_tree = jqtree.Index(bbox=nz_bounds, max_depth=200, max_items=100)
 
+nodes = {}
+next_node_id = 0
 class Node:
     def __init__(self, titles: typing.Set[str], names: typing.Set[str], bounds: aabb):
+        global next_node_id
         self.bounds = bounds
         self.titles = titles
         self.names = names
+        self.qtn = None
+        self.qt = None
+        self.id = next_node_id
+        next_node_id += 1
+        nodes[self.id] = self
 
     def has_title(self, title: str) -> True | False:
         return title in self.titles
@@ -45,9 +53,9 @@ print("Building initial tree...")
 start = time.time()
 
 # Build the tree
-slice = 10000
+slice = num_titles()
 for shapeRecord in itertools.islice(iterate_titles(), slice):
-    node = Node(set([shapeRecord.record.title_no]), title_owners(shapeRecord.record), shapeRecord.shape.bbox)
+    node = Node(set([shapeRecord.record.oid]), title_owners(shapeRecord.record), shapeRecord.shape.bbox)
     quad_tree.insert(node, node.bounds)
 print(f'Took {round(time.time() - start, 2)} seconds')
 print("Finding nearby...")
@@ -105,6 +113,7 @@ for shapeRecord in itertools.islice(iterate_titles(), slice):
     # Remove the old nodes from the tree
     for node in nodes_to_merge:
         quad_tree.remove(node, node.bounds)
+        del nodes[node.id]
         merges += 1
 
     # Insert the new, merged node.
@@ -112,6 +121,13 @@ for shapeRecord in itertools.islice(iterate_titles(), slice):
 print("Merged", merges, "nodes")
 print(f'Total time {round(time.time() - start, 2)} seconds')
 
+print("Saving to CSV")
+with open('cache/near-farms.csv', mode='w') as f:
+    f.write("farm_id,record_no\n")
+
+    for node in nodes.values():
+        for record in node.titles:
+            f.write(f'{node.id},{record}\n')
     
 # for each node
 #   place in tree
