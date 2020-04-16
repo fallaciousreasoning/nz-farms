@@ -6,7 +6,7 @@ import numpy
 
 from titles import get_shape
 from names_to_farms import get_farm_database
-from lat_lng import intersects
+from lat_lng import intersects, union
 
 next_farm_id = 1
 class FarmGroup:
@@ -14,27 +14,26 @@ class FarmGroup:
         global next_farm_id
         super().__init__()
         self.rows = []
-        self.bounds = []
+        self.bounds = None
         self.id = next_farm_id
         next_farm_id += 1
 
     def is_near(self, other) -> True | False:
         if not other:
             return False
-
-        for poly in self.bounds:
-            for otherPoly in other.bounds:
-                if intersects(poly, otherPoly):
-                    return True
-        return False
+        
+        return intersects(self.bounds, other.bounds)
 
     def merge_farm(self, other):
-        self.bounds.extend(other.bounds)
+        self.bounds = union(other.bounds, self.bounds)
         self.rows.extend(other.rows)
 
     def add(self, row, shape):
         self.rows.append(row)
-        self.bounds.append(shape.bbox)
+        if not self.bounds:
+            self.bounds = shape.bbox
+        else:
+            self.bounds = union(shape.bbox, self.bounds)
 
 database = get_farm_database()
 database['farm_id'] = pandas.Series(0, index=database.index)
@@ -55,6 +54,7 @@ for group_id, group in farm_groups:
         farm.add(record, shape)
         result_groups.append(farm)
 
+    print(f"\rMerging {len(result_groups)} farms", end='')
     def collapse_farms():
         removed = 0
         i = 0
@@ -86,7 +86,7 @@ for group_id, group in farm_groups:
             # database.at["farm_id", row] = farm.id
 
     farms_count += len(result_groups)
-    print(f"\rProgress: {round(processed_rows/total_rows*100, 2)}%", end='')
+    print(f"\rProgress: {round(processed_rows/total_rows*100, 2)}%\t\t", end='')
 
 print()
 print("End group counts:", farms_count);
