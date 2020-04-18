@@ -9,7 +9,7 @@ from titles import iterate_titles, num_titles
 from title_owners import title_owners
 
 nz_bounds = (-47.401915, 172.266598, -33.984178, 177.715816)
-quad_tree = jqtree.Index(bbox=nz_bounds, max_depth=200, max_items=100)
+quad_tree = jqtree.Index(bbox=nz_bounds, max_depth=40, max_items=100)
 
 nodes = {}
 next_node_id = 0
