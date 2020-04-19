@@ -142,5 +142,18 @@ def maybe_insert_owners():
 
     insert_owners()
 
+def create_title_owners_view():
+    db.execute("""CREATE VIEW IF NOT EXISTS TITLE_OWNERS AS
+        SELECT title.id as title_id, owner.name, title.geometry
+        FROM TITLES title
+        INNER JOIN OWNERS owner
+        ON title.id=owner.title_id""")
+    db.commit()
+
+def find_farms():
+    pass
+
 maybe_insert_titles()
 maybe_insert_owners()
+create_title_owners_view()
+find_farms()
