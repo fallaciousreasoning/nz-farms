@@ -43,20 +43,30 @@ def insert_data():
 
     titles_count = num_titles()
     start_time = time.time()
+
+    values = []
+    batch_size = 10000
+
     for title in itertools.islice(iterate_titles(), titles_count):
         shape: shapefile.Shape = title.shape
         record = title.record
         wkt = to_wkt(shape)
 
-        db.execute("""INSERT INTO TITLES VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, PolygonFromText(?))""",
-            (record.id, record.title_no, record.status, record.type,record.land_distr,
+        # Add the parameters for this query.
+        values.append((record.id, record.title_no, record.status, record.type,record.land_distr,
             record.issue_date,
             record.guarantee_,
             record.estate_des,
             record.owners,
             record.spatial_ex,
             wkt))
+
+        if len(values) >= batch_size:
+            db.executemany("""INSERT INTO TITLES VALUES
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, PolygonFromText(?))""",
+                values)
+            values.clear()
+        
         print_progress((record.oid + 1)/titles_count, start_time)
     db.commit()
 
