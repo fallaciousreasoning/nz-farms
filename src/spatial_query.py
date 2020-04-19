@@ -34,6 +34,11 @@ db_name = "cache/data.db"
 db = spatialite.connect(db_name)
 print(db.execute('SELECT spatialite_version()').fetchone()[0])
 
+def table_exists(table_name):
+    exists = db.execute("SELECT name FROM sqlite_master WHERE name='TITLES'").fetchone()
+
+    return not not exists
+
 def insert_titles():
     """We always drop the table when inserting data, to ensure everything is fresh"""
     db.execute("DROP TABLE IF EXISTS TITLES")
@@ -96,14 +101,13 @@ def create_title_indexes():
     db.commit()
 
 def maybe_insert_titles():
-    exists = db.execute("SELECT name FROM sqlite_master WHERE name='TITLES'").fetchone()
-    if exists:
+    if table_exists("TITLES"):
         print("Titles already loaded!")
         return
 
     insert_titles()
 
-def insert_names():
+def insert_owners():
     print("Inserting names....")
     db.execute("DROP TABLE IF EXISTS OWNERS")
     db.execute("""CREATE TABLE OWNERS
@@ -131,5 +135,12 @@ def insert_names():
     db.execute("CREATE INDEX OWNER_title_id on OWNERS(title_id)")
     db.commit()
 
+def maybe_insert_owners():
+    if table_exists("OWNERS"):
+        print("Owners already loaded!")
+        return
+
+    insert_owners()
+
 maybe_insert_titles()
-insert_names()
+maybe_insert_owners()
