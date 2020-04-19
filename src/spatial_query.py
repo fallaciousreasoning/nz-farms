@@ -10,6 +10,7 @@ import spatialite
 import shapefile
 
 def to_wkt(shape: shapefile.Shape):
+    geo = shape.__geo_interface__
     if shape.shapeTypeName != "POLYGON":
         raise Error("Unknown shape " + shape.shapeTypeName)
 
@@ -19,6 +20,13 @@ def to_wkt(shape: shapefile.Shape):
             result += ", "
         result += f"{point[0]} {point[1]}"
     result += "))"
+    return result
+
+def to_wkb(shape: shapefile.Shape):
+    if shape.shapeType != 5:
+        raise Error("Unknown shape" + shape.shapeTypeName)
+
+    result = 0
     return result
 
 db_name = "cache/data.db"
@@ -41,11 +49,13 @@ def insert_data():
         spatial_ex TEXT,
         Geometry MULTIPOLYGON)""")
 
+    print("Inserting titles....")
     titles_count = num_titles()
     start_time = time.time()
 
     values = []
     batch_size = 10000
+    report_progress = 100
 
     for title in itertools.islice(iterate_titles(), titles_count):
         shape: shapefile.Shape = title.shape
@@ -66,8 +76,18 @@ def insert_data():
                 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, PolygonFromText(?))""",
                 values)
             values.clear()
+            db.commit()
         
-        print_progress((record.oid + 1)/titles_count, start_time)
+        if (record.oid + 1) % report_progress == 0:
+            print_progress((record.oid + 1)/titles_count, start_time)
     db.commit()
 
-insert_data()
+def maybe_insert_data():
+    exists = db.execute("SELECT name FROM sqlite_master WHERE name='TITLES'").fetchone()
+    if exists:
+        print("Titles already loaded!")
+        return
+
+    insert_data()
+
+maybe_insert_data()
