@@ -1,0 +1,63 @@
+import os
+os.environ['PATH'] = os.path.abspath('lib/') + ';' + os.environ['PATH']
+import itertools
+import time
+
+from titles import iterate_titles, num_titles
+from progress import print_progress
+
+import spatialite
+import shapefile
+
+def to_wkt(shape: shapefile.Shape):
+    if shape.shapeTypeName != "POLYGON":
+        raise Error("Unknown shape " + shape.shapeTypeName)
+
+    result = "POLYGON (("
+    for point in shape.points:
+        if result[-1] != "(":
+            result += ", "
+        result += f"{point[0]} {point[1]}"
+    result += "))"
+    return result
+
+db_name = "cache/data.db"
+db = spatialite.connect(db_name)
+print(db.execute('SELECT spatialite_version()').fetchone()[0])
+
+def insert_data():
+    """We always drop the table when inserting data, to ensure everything is fresh"""
+    db.execute("DROP TABLE IF EXISTS TITLES")
+    db.execute("""CREATE TABLE TITLES
+        (id INTEGER PRIMARY KEY,
+        title_no TEXT,
+        status TEXT,
+        type TEXT,
+        land_distr TEXT,
+        issue_date TEXT,
+        guarantee_ TEXT,
+        estate_des TEXT,
+        owners TEXT,
+        spatial_ex TEXT,
+        Geometry MULTIPOLYGON)""")
+
+    titles_count = num_titles()
+    start_time = time.time()
+    for title in itertools.islice(iterate_titles(), titles_count):
+        shape: shapefile.Shape = title.shape
+        record = title.record
+        wkt = to_wkt(shape)
+
+        db.execute("""INSERT INTO TITLES VALUES
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, PolygonFromText(?))""",
+            (record.id, record.title_no, record.status, record.type,record.land_distr,
+            record.issue_date,
+            record.guarantee_,
+            record.estate_des,
+            record.owners,
+            record.spatial_ex,
+            wkt))
+        print_progress((record.oid + 1)/titles_count, start_time)
+    db.commit()
+
+insert_data()
