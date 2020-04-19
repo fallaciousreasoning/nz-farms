@@ -5,6 +5,7 @@ import time
 
 from titles import iterate_titles, num_titles
 from progress import print_progress
+from extract_owners import iterate_names
 
 import spatialite
 import shapefile
@@ -102,4 +103,33 @@ def maybe_insert_titles():
 
     insert_titles()
 
+def insert_names():
+    print("Inserting names....")
+    db.execute("DROP TABLE IF EXISTS OWNERS")
+    db.execute("""CREATE TABLE OWNERS
+        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title_id INTEGER,
+        name TEXT)""")
+
+    values = []
+    batch_size = 1000
+    def commit_batch():
+        db.executemany("INSERT INTO OWNERS VALUES (NULL, ?, ?)", values)
+        db.commit()
+        values.clear()
+
+    for title_id, name in iterate_names():
+        values.append((title_id, name))
+
+        if len(values) > batch_size:
+            commit_batch()
+
+    commit_batch()
+
+    print("Creating name indexes")
+    db.execute("CREATE INDEX OWNER_names on OWNERS(name)")
+    db.execute("CREATE INDEX OWNER_title_id on OWNERS(title_id)")
+    db.commit()
+
 maybe_insert_titles()
+insert_names()
