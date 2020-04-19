@@ -82,6 +82,14 @@ def insert_data():
             print_progress((record.oid + 1)/titles_count, start_time)
     db.commit()
 
+    create_title_indexes()
+
+def create_title_indexes():
+    print("Creating TITLES indexes...")
+    db.execute("CREATE INDEX TITLE_title_no ON TITLES(title_no)")
+    db.execute("CREATE INDEX TITLES_geometry ON TITLES(Geometry)")
+    db.commit()
+
 def maybe_insert_data():
     exists = db.execute("SELECT name FROM sqlite_master WHERE name='TITLES'").fetchone()
     if exists:
