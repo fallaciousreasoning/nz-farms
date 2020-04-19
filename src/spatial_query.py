@@ -56,6 +56,13 @@ def insert_data():
     values = []
     batch_size = 10000
     report_progress = 100
+    
+    def commit_batch():
+        db.executemany("""INSERT INTO TITLES VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, PolygonFromText(?))""",
+        values)
+        db.commit()
+        values.clear()
 
     for title in itertools.islice(iterate_titles(), titles_count):
         shape: shapefile.Shape = title.shape
@@ -72,16 +79,13 @@ def insert_data():
             wkt))
 
         if len(values) >= batch_size:
-            db.executemany("""INSERT INTO TITLES VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, PolygonFromText(?))""",
-                values)
-            values.clear()
-            db.commit()
+            commit_batch()
         
         if (record.oid + 1) % report_progress == 0:
             print_progress((record.oid + 1)/titles_count, start_time)
-    db.commit()
 
+    # Commit any remaining records.
+    commit_batch()
     create_title_indexes()
 
 def create_title_indexes():
