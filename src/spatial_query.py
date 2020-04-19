@@ -151,7 +151,29 @@ def create_title_owners_view():
     db.commit()
 
 def find_farms():
-    pass
+    ouput_file = "output/farms.csv"
+
+    query = db.execute("""SELECT DISTINCT title.title_id, other_title.title_id
+        FROM TITLE_OWNERS title
+        INNER JOIN TITLE_OWNERS other_title
+        on not title.title_id = other_title.title_id
+            /*Only check one way*/
+            and title.title_id < other_title.title_id
+            and title.name = other_title.name
+            and Intersects(title.geometry, other_title.geometry)""")
+
+    batch_size = 100
+    f = open(ouput_file, mode='w')
+
+    f.write("title_0,title_1\n")
+    while True:
+        results = query.fetchmany(batch_size)
+        for result in results:
+            f.write(f"{result[0]},{result[1]}\n")
+        if len(results) < batch_size:
+            break
+
+    f.close()
 
 maybe_insert_titles()
 maybe_insert_owners()
