@@ -33,7 +33,7 @@ db_name = "cache/data.db"
 db = spatialite.connect(db_name)
 print(db.execute('SELECT spatialite_version()').fetchone()[0])
 
-def insert_data():
+def insert_titles():
     """We always drop the table when inserting data, to ensure everything is fresh"""
     db.execute("DROP TABLE IF EXISTS TITLES")
     db.execute("""CREATE TABLE TITLES
@@ -56,7 +56,7 @@ def insert_data():
     values = []
     batch_size = 10000
     report_progress = 100
-    
+
     def commit_batch():
         db.executemany("""INSERT INTO TITLES VALUES
         (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, PolygonFromText(?))""",
@@ -94,12 +94,12 @@ def create_title_indexes():
     db.execute("CREATE INDEX TITLES_geometry ON TITLES(Geometry)")
     db.commit()
 
-def maybe_insert_data():
+def maybe_insert_titles():
     exists = db.execute("SELECT name FROM sqlite_master WHERE name='TITLES'").fetchone()
     if exists:
         print("Titles already loaded!")
         return
 
-    insert_data()
+    insert_titles()
 
-maybe_insert_data()
+maybe_insert_titles()
