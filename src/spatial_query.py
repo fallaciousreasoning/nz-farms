@@ -142,7 +142,7 @@ def maybe_insert_owners():
 
     insert_owners()
 
-def create_title_owners_view():
+def maybe_create_title_owners_view():
     db.execute("""CREATE VIEW IF NOT EXISTS TITLE_OWNERS AS
         SELECT title.id as title_id, owner.name, title.geometry
         FROM TITLES title
@@ -150,8 +150,12 @@ def create_title_owners_view():
         ON title.id=owner.title_id""")
     db.commit()
 
-def find_farms():
+def maybe_find_farms():
     ouput_file = "output/farms.csv"
+
+    if os.path.exists(ouput_file):
+        print("Already found farms!")
+        return
 
     query = db.execute("""SELECT DISTINCT title.title_id, other_title.title_id
         FROM TITLE_OWNERS title
@@ -174,8 +178,9 @@ def find_farms():
             break
 
     f.close()
+    print("Found farms!")
 
 maybe_insert_titles()
 maybe_insert_owners()
-create_title_owners_view()
-find_farms()
+maybe_create_title_owners_view()
+maybe_find_farms()
