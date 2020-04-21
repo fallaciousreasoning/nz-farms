@@ -182,6 +182,11 @@ def maybe_find_farms():
     print("Found farms!")
 
 def maybe_build_groups():
+    output_groups = 'output/grouped_farms.csv'
+    if os.path.exists(output_groups):
+        print("Farms are already grouped!")
+        return
+
     next_group_id = 0
     farm_to_group: typing.Dict[int, int] = {}
     groups: typing.Dict[int, typing.Set[int]] = {}
@@ -220,12 +225,13 @@ def maybe_build_groups():
             ids = [int(id) for id in line.split(',')]
             join_farms(ids)
 
-    with open('output/grouped_farms.csv', mode='w') as f:
+    with open(output_groups, mode='w') as f:
         f.write('group_id,farm_id\n')
-        for group_id in groups.keys():
-            group = groups[group_id]
+        for group_id, group in groups.items():
             for farm in group:
                 f.write(f'{group_id},{farm}\n')
+
+    print("Wrote farms with groups to", output_groups)
 
 maybe_insert_titles()
 maybe_insert_owners()
