@@ -28,13 +28,6 @@ def to_wkt(shape: shapefile.Shape):
     result += "))"
     return result
 
-def to_wkb(shape: shapefile.Shape):
-    if shape.shapeType != 5:
-        raise Error("Unknown shape" + shape.shapeTypeName)
-
-    result = 0
-    return result
-
 db_name = "cache/data.db"
 db = spatialite.connect(db_name)
 print(db.execute('SELECT spatialite_version()').fetchone()[0])
