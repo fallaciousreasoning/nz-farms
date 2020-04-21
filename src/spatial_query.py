@@ -234,6 +234,7 @@ def maybe_build_groups():
     print("Wrote farms with groups to", output_groups)
 
 def output_titles_with_groups():
+    print("Outputting titles shape file with farm ids")
     title_to_group_id = {}
     with open('output/grouped_farms.csv') as f:
         for line in itertools.islice(f, 1, None):
@@ -242,13 +243,20 @@ def output_titles_with_groups():
             # Map from farm_id to group_id
             title_to_group_id[parts[1]] = parts[0]
 
+    start_time = time.time()
+    print_progress_every = 1000
+
     writer = get_title_with_group_writer("output/titles")
     for shape_record in iterate_titles():
         title_id = shape_record.record.oid
         farm_id = title_to_group_id[title_id] if title_id in title_to_group_id else None
         write_title(writer, shape_record, farm_id)
 
+        if (shape_record.record.oid + 1) % print_progress_every == 0:
+            print_progress((shape_record.record.oid + 1)/num_titles(), start_time)
+
     writer.close()
+    print("Wrote titles shape file to: " + "output/titles")
 
 
 maybe_insert_titles()
