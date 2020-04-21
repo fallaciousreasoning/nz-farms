@@ -247,7 +247,7 @@ def output_titles_with_groups():
     start_time = time.time()
     print_progress_every = 1000
 
-    writer = get_title_with_group_writer("output/titles")
+    writer = get_title_with_group_writer(output_titles_with_groups)
     for shape_record in iterate_titles():
         title_id = shape_record.record.id
         farm_id = title_to_group_id[title_id] if title_id in title_to_group_id else None
@@ -257,7 +257,7 @@ def output_titles_with_groups():
             print_progress((shape_record.record.oid + 1)/num_titles(), start_time)
 
     writer.close()
-    print("Wrote titles shape file to: " + "output/titles")
+    print("Wrote titles shape file to: " + output_titles_with_groups)
 
 
 maybe_insert_titles()
