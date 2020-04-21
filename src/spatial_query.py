@@ -69,6 +69,8 @@ def insert_urban_areas():
 
     commit_batch()
 
+    db.execute("CREATE INDEX URBAN_AREAS_shape ON URBAN_AREAS(shape)")
+
     print("Inserted urban areas!")
 
 def maybe_insert_urban_areas():
@@ -92,7 +94,7 @@ def insert_titles():
         estate_des TEXT,
         owners TEXT,
         spatial_ex TEXT,
-        Geometry MULTIPOLYGON)""")
+        Geometry POLYGON)""")
 
     print("Inserting titles....")
     titles_count = num_titles()
@@ -299,4 +301,4 @@ maybe_insert_owners()
 maybe_create_title_owners_view()
 maybe_find_title_pairs()
 maybe_build_farms()
-output_titles_with_groups()
+# output_titles_with_groups()
