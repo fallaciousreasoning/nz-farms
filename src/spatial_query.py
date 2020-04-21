@@ -2,6 +2,7 @@ import os
 os.environ['PATH'] = os.path.abspath('lib/') + ';' + os.environ['PATH']
 import itertools
 import time
+import typing
 
 from titles import iterate_titles, num_titles
 from progress import print_progress
@@ -180,7 +181,54 @@ def maybe_find_farms():
     f.close()
     print("Found farms!")
 
+def maybe_build_groups():
+    next_group_id = 0
+    farm_to_group: typing.Dict[int, int] = {}
+    groups: typing.Dict[int, typing.Set[int]] = {}
+
+    def join_farms(ids: typing.List[int]):
+        nonlocal next_group_id
+        group_id = None
+        for farm in ids:
+            farm_group_id = farm_to_group[farm] if farm in farm_to_group else None
+
+            # We need to join the groups 
+            if group_id and farm_group_id and group_id != farm_group_id:
+                groups[group_id].update(groups[farm_group_id])
+                del groups[farm_group_id]
+
+            # Make sure we store the group we've seen.
+            if not group_id:
+                group_id = farm_group_id
+
+        # If no group exists, make a new group
+        if not group_id:
+            group_id = next_group_id
+            groups[group_id] = set()
+            next_group_id += 1
+
+        # Add the farms to the group.
+        groups[group_id].update(ids)
+
+        # Point all the farms at their group.
+        for farm in groups[group_id]:
+            farm_to_group[farm] = group_id 
+
+    with open('output/farms.csv') as f:
+        # Skip the header line
+        for line in itertools.islice(f, 1, None):
+            ids = [int(id) for id in line.split(',')]
+            join_farms(ids)
+
+    with open('output/grouped_farms.csv', mode='w') as f:
+        f.write('group_id,farm_id\n')
+        for group_id in groups.keys():
+            group = groups[group_id]
+            for farm in group:
+                f.write(f'{group_id},{farm}\n')
+
 maybe_insert_titles()
 maybe_insert_owners()
 maybe_create_title_owners_view()
 maybe_find_farms()
+maybe_build_groups()
