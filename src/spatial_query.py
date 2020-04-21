@@ -4,6 +4,8 @@ import itertools
 import time
 import typing
 
+from geodaisy import converters, GeoObject
+
 from titles import iterate_titles, num_titles, get_title_with_group_writer, write_title
 from land_cover import num_covers, iterate_covers, is_urban
 from progress import print_progress
@@ -17,17 +19,7 @@ farms_file = "cache/farms.csv"
 farm_titles_shapefile = "output/titles"
 
 def to_wkt(shape: shapefile.Shape):
-    geo = shape.__geo_interface__
-    if shape.shapeTypeName != "POLYGON":
-        raise Error("Unknown shape " + shape.shapeTypeName)
-
-    result = "POLYGON (("
-    for point in shape.points:
-        if result[-1] != "(":
-            result += ", "
-        result += f"{point[0]} {point[1]}"
-    result += "))"
-    return result
+    return GeoObject(shape).wkt()
 
 db_name = "cache/data.db"
 db = spatialite.connect(db_name)
@@ -147,6 +139,12 @@ def maybe_insert_titles():
         return
 
     insert_titles()
+
+def maybe_create_rural_titles_view():
+    db.execute("""CREATE VIEW IF NOT EXISTS RURAL_TITLES AS
+        SELECT * FROM TITLES t
+        WHERE NOT EXISTS(SELECT * FROM URBAN_AREAS a WHERE INTERSECTS(a.shape, t.Geometry))""")
+    db.commit()
 
 def insert_owners():
     print("Inserting names....")
@@ -295,8 +293,9 @@ def output_titles_with_groups():
     writer.close()
     print("Wrote titles shape file to: " + farm_titles_shapefile)
 
-maybe_insert_urban_areas()
+insert_urban_areas()
 maybe_insert_titles()
+maybe_create_rural_titles_view()
 maybe_insert_owners()
 maybe_create_title_owners_view()
 maybe_find_title_pairs()
