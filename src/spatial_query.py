@@ -4,7 +4,7 @@ import itertools
 import time
 import typing
 
-from titles import iterate_titles, num_titles
+from titles import iterate_titles, num_titles, get_title_with_group_writer, write_title
 from progress import print_progress
 from extract_owners import iterate_names
 
@@ -188,23 +188,23 @@ def maybe_build_groups():
         return
 
     next_group_id = 0
-    farm_to_group: typing.Dict[int, int] = {}
+    title_to_group: typing.Dict[int, int] = {}
     groups: typing.Dict[int, typing.Set[int]] = {}
 
     def join_farms(ids: typing.List[int]):
         nonlocal next_group_id
         group_id = None
-        for farm in ids:
-            farm_group_id = farm_to_group[farm] if farm in farm_to_group else None
+        for title in ids:
+            title_group_id = title_to_group[title] if title in title_to_group else None
 
             # We need to join the groups 
-            if group_id and farm_group_id and group_id != farm_group_id:
-                groups[group_id].update(groups[farm_group_id])
-                del groups[farm_group_id]
+            if group_id and title_group_id and group_id != title_group_id:
+                groups[group_id].update(groups[title_group_id])
+                del groups[title_group_id]
 
             # Make sure we store the group we've seen.
             if not group_id:
-                group_id = farm_group_id
+                group_id = title_group_id
 
         # If no group exists, make a new group
         if not group_id:
@@ -216,8 +216,8 @@ def maybe_build_groups():
         groups[group_id].update(ids)
 
         # Point all the farms at their group.
-        for farm in groups[group_id]:
-            farm_to_group[farm] = group_id 
+        for title in groups[group_id]:
+            title_to_group[title] = group_id 
 
     with open('output/farms.csv') as f:
         # Skip the header line
@@ -226,15 +226,34 @@ def maybe_build_groups():
             join_farms(ids)
 
     with open(output_groups, mode='w') as f:
-        f.write('group_id,farm_id\n')
+        f.write('group_id,title_id\n')
         for group_id, group in groups.items():
-            for farm in group:
-                f.write(f'{group_id},{farm}\n')
+            for title in group:
+                f.write(f'{group_id},{title}\n')
 
     print("Wrote farms with groups to", output_groups)
+
+def output_titles_with_groups():
+    title_to_group_id = {}
+    with open('output/grouped_farms.csv') as f:
+        for line in itertools.islice(f, 1, None):
+            parts = [int(x) for x in line.split(',')]
+
+            # Map from farm_id to group_id
+            title_to_group_id[parts[1]] = parts[0]
+
+    writer = get_title_with_group_writer("output/titles")
+    for shape_record in iterate_titles():
+        title_id = shape_record.record.oid
+        farm_id = title_to_group_id[title_id] if title_id in title_to_group_id else None
+        write_title(writer, shape_record, farm_id)
+
+    writer.close()
+
 
 maybe_insert_titles()
 maybe_insert_owners()
 maybe_create_title_owners_view()
 maybe_find_farms()
 maybe_build_groups()
+output_titles_with_groups()
