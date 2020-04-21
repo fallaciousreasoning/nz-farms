@@ -11,6 +11,10 @@ from extract_owners import iterate_names
 import spatialite
 import shapefile
 
+title_pairs_file = "cache/title_pairs.csv"
+farms_file = "cache/farms.csv"
+farm_titles_shapefile = "output/titles"
+
 def to_wkt(shape: shapefile.Shape):
     geo = shape.__geo_interface__
     if shape.shapeTypeName != "POLYGON":
@@ -151,11 +155,9 @@ def maybe_create_title_owners_view():
         ON title.id=owner.title_id""")
     db.commit()
 
-def maybe_find_farms():
-    ouput_file = "output/farms.csv"
-
-    if os.path.exists(ouput_file):
-        print("Already found farms!")
+def maybe_find_title_pairs():
+    if os.path.exists(title_pairs_file):
+        print("Already found title pairs!")
         return
 
     query = db.execute("""SELECT DISTINCT title.title_id, other_title.title_id
@@ -168,7 +170,7 @@ def maybe_find_farms():
             and Intersects(title.geometry, other_title.geometry)""")
 
     batch_size = 100
-    f = open(ouput_file, mode='w')
+    f = open(title_pairs_file, mode='w')
 
     f.write("title_0,title_1\n")
     while True:
@@ -179,11 +181,10 @@ def maybe_find_farms():
             break
 
     f.close()
-    print("Found farms!")
+    print("Found title pairs!")
 
-def maybe_build_groups():
-    output_groups = 'output/grouped_farms.csv'
-    if os.path.exists(output_groups):
+def maybe_build_farms():
+    if os.path.exists(farms_file):
         print("Farms are already grouped!")
         return
 
@@ -219,13 +220,13 @@ def maybe_build_groups():
         for title in groups[group_id]:
             title_to_group[title] = group_id 
 
-    with open('output/farms.csv') as f:
+    with open(title_pairs_file) as f:
         # Skip the header line
         for line in itertools.islice(f, 1, None):
             ids = [int(id) for id in line.split(',')]
             join_farms(ids)
 
-    with open(output_groups, mode='w') as f:
+    with open(farms_file, mode='w') as f:
         f.write('group_id,title_id\n')
         for group_id, group in groups.items():
             for title in group:
@@ -236,7 +237,7 @@ def maybe_build_groups():
 def output_titles_with_groups():
     print("Outputting titles shape file with farm ids")
     title_to_group_id = {}
-    with open('output/grouped_farms.csv') as f:
+    with open(farms_file) as f:
         for line in itertools.islice(f, 1, None):
             parts = [int(x) for x in line.split(',')]
 
@@ -248,7 +249,7 @@ def output_titles_with_groups():
 
     writer = get_title_with_group_writer("output/titles")
     for shape_record in iterate_titles():
-        title_id = shape_record.record.oid
+        title_id = shape_record.record.id
         farm_id = title_to_group_id[title_id] if title_id in title_to_group_id else None
         write_title(writer, shape_record, farm_id)
 
@@ -262,6 +263,6 @@ def output_titles_with_groups():
 maybe_insert_titles()
 maybe_insert_owners()
 maybe_create_title_owners_view()
-maybe_find_farms()
-maybe_build_groups()
+maybe_find_title_pairs()
+maybe_build_farms()
 output_titles_with_groups()
