@@ -5,6 +5,7 @@ import time
 import typing
 
 from titles import iterate_titles, num_titles, get_title_with_group_writer, write_title
+from land_cover import num_covers, iterate_covers, is_urban
 from progress import print_progress
 from extract_owners import iterate_names
 
@@ -36,6 +37,46 @@ def table_exists(table_name):
     exists = db.execute("SELECT name FROM sqlite_master WHERE name='TITLES'").fetchone()
 
     return not not exists
+
+def insert_urban_areas():
+    print("Inserting urban areas")
+
+    db.execute("DROP TABLE IF EXISTS URBAN_AREAS")
+    db.execute("""CREATE TABLE URBAN_AREAS
+        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+        shape MULTIPOLYGON)""")
+
+    start_time = time.time()
+    values = []
+    batch_size = 1000
+    progress_report_at = 500
+
+    def commit_batch():
+        db.executemany("""INSERT INTO URBAN_AREAS VALUES
+            (NULL, ?)""", values)
+        db.commit()
+        values.clear()      
+
+    for sr in iterate_covers():
+        if is_urban(sr):
+            values.append((to_wkt(sr.shape),))
+
+            if len(values) > batch_size:
+                commit_batch()
+
+        if (sr.record.oid + 1) % progress_report_at == 0:
+            print_progress((sr.record.oid + 1)/ num_covers(), start_time)
+
+    commit_batch()
+
+    print("Inserted urban areas!")
+
+def maybe_insert_urban_areas():
+    if table_exists("URBAN_AREAS"):
+        print("Urban areas already inserted")
+        return
+
+    insert_urban_areas()
 
 def insert_titles():
     """We always drop the table when inserting data, to ensure everything is fresh"""
@@ -240,7 +281,7 @@ def output_titles_with_groups():
     start_time = time.time()
     print_progress_every = 1000
 
-    writer = get_title_with_group_writer(output_titles_with_groups)
+    writer = get_title_with_group_writer(farm_titles_shapefile)
     for shape_record in iterate_titles():
         title_id = shape_record.record.id
         farm_id = title_to_group_id[title_id] if title_id in title_to_group_id else None
@@ -250,9 +291,9 @@ def output_titles_with_groups():
             print_progress((shape_record.record.oid + 1)/num_titles(), start_time)
 
     writer.close()
-    print("Wrote titles shape file to: " + output_titles_with_groups)
+    print("Wrote titles shape file to: " + farm_titles_shapefile)
 
-
+maybe_insert_urban_areas()
 maybe_insert_titles()
 maybe_insert_owners()
 maybe_create_title_owners_view()

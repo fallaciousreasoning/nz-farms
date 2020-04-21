@@ -2,7 +2,6 @@ import shapefile
 import typing
 
 input_file = "data/titles/nz-property-titles-including-owners-1"
-output_file = "output/titles"
 
 sf = shapefile.Reader(input_file)
 
