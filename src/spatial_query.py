@@ -19,14 +19,24 @@ farms_file = "cache/farms.csv"
 farm_titles_shapefile = "output/titles"
 
 def to_wkt(shape: shapefile.Shape):
-    return GeoObject(shape).wkt()
+    geo = shape.__geo_interface__
+    if shape.shapeTypeName != "POLYGON":
+       raise Error("Unknown shape " + shape.shapeTypeName)
+
+    result = "POLYGON (("
+    for point in shape.points:
+        if result[-1] != "(":
+            result += ", "
+        result += f"{point[0]} {point[1]}"
+    result += "))"
+    return result
 
 db_name = "cache/data.db"
 db = spatialite.connect(db_name)
 print(db.execute('SELECT spatialite_version()').fetchone()[0])
 
 def table_exists(table_name):
-    exists = db.execute("SELECT name FROM sqlite_master WHERE name='TITLES'").fetchone()
+    exists = db.execute(f"SELECT name FROM sqlite_master WHERE name='{table_name}'").fetchone()
 
     return not not exists
 
@@ -36,7 +46,7 @@ def insert_urban_areas():
     db.execute("DROP TABLE IF EXISTS URBAN_AREAS")
     db.execute("""CREATE TABLE URBAN_AREAS
         (id INTEGER PRIMARY KEY AUTOINCREMENT,
-        shape MULTIPOLYGON)""")
+        Geometry MULTIPOLYGON)""")
 
     start_time = time.time()
     values = []
@@ -45,7 +55,7 @@ def insert_urban_areas():
 
     def commit_batch():
         db.executemany("""INSERT INTO URBAN_AREAS VALUES
-            (NULL, ?)""", values)
+            (NULL, PolygonFromText(?))""", values)
         db.commit()
         values.clear()      
 
@@ -61,7 +71,7 @@ def insert_urban_areas():
 
     commit_batch()
 
-    db.execute("CREATE INDEX URBAN_AREAS_shape ON URBAN_AREAS(shape)")
+    db.execute("CREATE INDEX URBAN_AREAS_geometry ON URBAN_AREAS(geometry)")
 
     print("Inserted urban areas!")
 
@@ -86,7 +96,7 @@ def insert_titles():
         estate_des TEXT,
         owners TEXT,
         spatial_ex TEXT,
-        Geometry POLYGON)""")
+        Geometry MULTIPOLYGON)""")
 
     print("Inserting titles....")
     titles_count = num_titles()
@@ -143,7 +153,7 @@ def maybe_insert_titles():
 def maybe_create_rural_titles_view():
     db.execute("""CREATE VIEW IF NOT EXISTS RURAL_TITLES AS
         SELECT * FROM TITLES t
-        WHERE NOT EXISTS(SELECT * FROM URBAN_AREAS a WHERE INTERSECTS(a.shape, t.Geometry))""")
+        WHERE NOT EXISTS(SELECT * FROM URBAN_AREAS a WHERE INTERSECTS(a.Geometry, t.Geometry))""")
     db.commit()
 
 def insert_owners():
@@ -253,12 +263,24 @@ def maybe_build_farms():
         # Point all the farms at their group.
         for title in groups[group_id]:
             title_to_group[title] = group_id 
+    
+    total_bytes = os.path.getsize(title_pairs_file)
+    read_bytes = 0
+    start_time = time.time()
+    print_every = 1000
+    line_number = 0
 
     with open(title_pairs_file) as f:
         # Skip the header line
         for line in itertools.islice(f, 1, None):
+            read_bytes += len(line)
             ids = [int(id) for id in line.split(',')]
             join_farms(ids)
+
+            if line_number % print_every == 0:
+                print_progress(read_bytes/total_bytes, start_time)
+            line_number += 1
+    print()
 
     with open(farms_file, mode='w') as f:
         f.write('group_id,title_id\n')
@@ -293,11 +315,11 @@ def output_titles_with_groups():
     writer.close()
     print("Wrote titles shape file to: " + farm_titles_shapefile)
 
-insert_urban_areas()
+maybe_insert_urban_areas()
 maybe_insert_titles()
-maybe_create_rural_titles_view()
-maybe_insert_owners()
-maybe_create_title_owners_view()
-maybe_find_title_pairs()
-maybe_build_farms()
+# maybe_create_rural_titles_view()
+# maybe_insert_owners()
+# maybe_create_title_owners_view()
+# maybe_find_title_pairs()
+# maybe_build_farms()
 # output_titles_with_groups()
