@@ -288,7 +288,7 @@ def maybe_build_farms():
             for title in group:
                 f.write(f'{group_id},{title}\n')
 
-    print("Wrote farms with groups to", output_groups)
+    print("Wrote farms to", farms_file)
 
 def output_titles_with_groups():
     print("Outputting titles shape file with farm ids")
