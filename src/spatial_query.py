@@ -23,34 +23,38 @@ def to_wkt(shape: shapefile.Shape):
     if shape.shapeTypeName != "POLYGON":
        raise Error("Unknown shape " + shape.shapeTypeName)
 
-    result = "POLYGON (("
+    result = "MULTIPOLYGON ((("
     for point in shape.points:
         if result[-1] != "(":
             result += ", "
         result += f"{point[0]} {point[1]}"
-    result += "))"
+    result += ")))"
     return result
 
 db_name = "cache/data.db"
 db = spatialite.connect(db_name)
-print(db.execute('SELECT spatialite_version()').fetchone()[0])
 
 def table_exists(table_name):
     exists = db.execute(f"SELECT name FROM sqlite_master WHERE name='{table_name}'").fetchone()
 
     return not not exists
 
+print(db.execute('SELECT spatialite_version()').fetchone()[0])
+if not table_exists('spatial_ref_sys'):
+    db.execute('SELECT InitSpatialMetaData();')
+
 def insert_urban_areas():
     print("Inserting urban areas")
 
     db.execute("DROP TABLE IF EXISTS URBAN_AREAS")
+    db.execute("SELECT DiscardGeometryColumn('URBAN_AREAS', 'Geometry')")
     db.execute("""CREATE TABLE URBAN_AREAS
-        (id INTEGER PRIMARY KEY AUTOINCREMENT,
-        Geometry MULTIPOLYGON)""")
+        (id INTEGER PRIMARY KEY AUTOINCREMENT)""")
+    db.execute("SELECT AddGeometryColumn('URBAN_AREAS', 'Geometry', 4326, 'POLYGON', 'XY')")
 
     start_time = time.time()
     values = []
-    batch_size = 1000
+    batch_size = 1
     progress_report_at = 500
 
     def commit_batch():
@@ -71,7 +75,7 @@ def insert_urban_areas():
 
     commit_batch()
 
-    db.execute("CREATE INDEX URBAN_AREAS_geometry ON URBAN_AREAS(geometry)")
+    db.execute("SELECT CreateSpatialIndex('URBAN_AREAS', 'Geometry')")
 
     print("Inserted urban areas!")
 
@@ -84,7 +88,9 @@ def maybe_insert_urban_areas():
 
 def insert_titles():
     """We always drop the table when inserting data, to ensure everything is fresh"""
-    db.execute("DROP TABLE IF EXISTS TITLES")
+    if table_exists("TITLES"):
+        db.execute("SELECT DiscardGeometryColumn('TITLES', 'Geometry')")
+        db.execute("DROP TABLE IF EXISTS TITLES")
     db.execute("""CREATE TABLE TITLES
         (id INTEGER PRIMARY KEY,
         title_no TEXT,
@@ -95,8 +101,8 @@ def insert_titles():
         guarantee_ TEXT,
         estate_des TEXT,
         owners TEXT,
-        spatial_ex TEXT,
-        Geometry MULTIPOLYGON)""")
+        spatial_ex TEXT)""")
+    db.execute("SELECT AddGeometryColumn('TITLES', 'geometry', 4326, 'MULTIPOLYGON', 'XY')")
 
     print("Inserting titles....")
     titles_count = num_titles()
@@ -140,7 +146,8 @@ def insert_titles():
 def create_title_indexes():
     print("Creating TITLES indexes...")
     db.execute("CREATE INDEX TITLE_title_no ON TITLES(title_no)")
-    db.execute("CREATE INDEX TITLES_geometry ON TITLES(Geometry)")
+    db.execute("SELECT CreateSpatialIndex('TITLES', 'Geometry')")
+
     db.commit()
 
 def maybe_insert_titles():
@@ -315,11 +322,11 @@ def output_titles_with_groups():
     writer.close()
     print("Wrote titles shape file to: " + farm_titles_shapefile)
 
-maybe_insert_urban_areas()
-maybe_insert_titles()
-maybe_create_rural_titles_view()
+# insert_urban_areas()
+insert_titles()
+# maybe_create_rural_titles_view()
 maybe_insert_owners()
 maybe_create_title_owners_view()
-maybe_find_title_pairs()
-maybe_build_farms()
-output_titles_with_groups()
+# maybe_find_title_pairs()
+# maybe_build_farms()
+# output_titles_with_groups()
