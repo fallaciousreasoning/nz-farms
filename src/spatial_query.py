@@ -7,7 +7,7 @@ import typing
 from geodaisy import converters, GeoObject
 
 from titles import iterate_titles, num_titles, get_title_with_group_writer, write_title
-from land_cover import num_covers, iterate_covers, is_urban
+from land_cover import num_covers, iterate_covers
 from progress import print_progress
 from extract_owners import iterate_names
 
@@ -56,21 +56,20 @@ def insert_urban_areas():
 
     start_time = time.time()
     values = []
-    batch_size = 1
+    batch_size = 1000
     progress_report_at = 500
 
     def commit_batch():
         db.executemany("""INSERT INTO URBAN_AREAS VALUES
-            (NULL, PolygonFromText(?))""", values)
+            (NULL, PolygonFromText(?, 4326))""", values)
         db.commit()
         values.clear()      
 
     for sr in iterate_covers():
-        if is_urban(sr):
-            values.append((to_wkt(sr.shape),))
+        values.append((to_wkt(sr.shape),))
 
-            if len(values) > batch_size:
-                commit_batch()
+        if len(values) > batch_size:
+            commit_batch()
 
         if (sr.record.oid + 1) % progress_report_at == 0:
             print_progress((sr.record.oid + 1)/ num_covers(), start_time)
@@ -325,8 +324,8 @@ def output_titles_with_groups():
     writer.close()
     print("Wrote titles shape file to: " + farm_titles_shapefile)
 
-# insert_urban_areas()
-insert_titles()
+insert_urban_areas()
+maybe_insert_titles()
 # maybe_create_rural_titles_view()
 maybe_insert_owners()
 maybe_create_title_owners_view()
