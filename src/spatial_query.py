@@ -19,16 +19,15 @@ farms_file = "cache/farms.csv"
 farm_titles_shapefile = "output/titles"
 
 def to_wkt(shape: shapefile.Shape):
-    geo = shape.__geo_interface__
     if shape.shapeTypeName != "POLYGON":
        raise Error("Unknown shape " + shape.shapeTypeName)
 
-    result = "MULTIPOLYGON ((("
+    result = "POLYGON (("
     for point in shape.points:
         if result[-1] != "(":
             result += ", "
         result += f"{point[0]} {point[1]}"
-    result += ")))"
+    result += "))"
     return result
 
 db_name = "cache/data.db"
@@ -89,6 +88,7 @@ def maybe_insert_urban_areas():
 def insert_titles():
     """We always drop the table when inserting data, to ensure everything is fresh"""
     if table_exists("TITLES"):
+        db.execute("SELECT DisableSpatialIndex('TITLES', 'Geometry')")
         db.execute("SELECT DiscardGeometryColumn('TITLES', 'Geometry')")
         db.execute("DROP TABLE IF EXISTS TITLES")
     db.execute("""CREATE TABLE TITLES
@@ -102,7 +102,7 @@ def insert_titles():
         estate_des TEXT,
         owners TEXT,
         spatial_ex TEXT)""")
-    db.execute("SELECT AddGeometryColumn('TITLES', 'geometry', 4326, 'MULTIPOLYGON', 'XY')")
+    db.execute("SELECT AddGeometryColumn('TITLES', 'geometry', 4326, 'POLYGON', 'XY')")
 
     print("Inserting titles....")
     titles_count = num_titles()
@@ -114,7 +114,7 @@ def insert_titles():
 
     def commit_batch():
         db.executemany("""INSERT INTO TITLES VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, PolygonFromText(?))""",
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, PolygonFromText(?, 4326))""",
         values)
         db.commit()
         values.clear()
