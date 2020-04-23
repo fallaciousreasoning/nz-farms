@@ -40,7 +40,10 @@ def table_exists(table_name):
 
 print(db.execute('SELECT spatialite_version()').fetchone()[0])
 if not table_exists('spatial_ref_sys'):
-    db.execute('SELECT InitSpatialMetaData();')
+    cursor = db.cursor()
+    cursor.execute("BEGIN ;")
+    cursor.execute('SELECT InitSpatialMetaData();')
+    cursor.execute("END ;")
 
 def insert_urban_areas():
     print("Inserting urban areas")
