@@ -145,6 +145,8 @@ def insert_owners():
     print("Creating name indexes")
     db.execute("CREATE INDEX OWNER_names on OWNERS(name)")
     db.execute("CREATE INDEX OWNER_title_id on OWNERS(title_id)")
+    db.execute("CREATE INDEX OWNER_is_last_name on OWNERS(is_last_name)")
+    db.execute("CREATE INDEX OWNER_is_company_director on OWNERS(is_company_director)")
     db.commit()
 
 def maybe_insert_owners():
