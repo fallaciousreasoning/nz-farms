@@ -67,7 +67,7 @@ def get_companies():
 
 def get_company(name):
     name = name.upper()
-    return get_companies()[name]
+    return get_companies().get(name)
 
 def has_company(name):
     name = name.upper()

@@ -123,8 +123,8 @@ def insert_owners():
     db.execute("""CREATE TABLE OWNERS
         (id INTEGER PRIMARY KEY AUTOINCREMENT,
         title_id INTEGER,
-        name TEXT
-        is_last_name BOOLEAN
+        name TEXT,
+        is_last_name BOOLEAN,
         is_company_director BOOLEAN)""")
 
     values = []

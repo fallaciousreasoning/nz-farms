@@ -21,5 +21,5 @@ def last_name(name):
 
 def name_is_company(name):
     """Heuristic for guessing if a name belongs to a company"""
-    return name.endswith('Limited')
+    return name.upper().endswith('LIMITED')
 
