@@ -194,8 +194,10 @@ def maybe_create_title_owners_views():
 def maybe_create_title_owners_view():
     db.commit()
 
-def maybe_find_title_pairs():
-    if os.path.exists(title_pairs_file):
+def maybe_find_title_pairs(owners_view):
+    ouput_file = f'{title_pairs_file}-{owners_view}'
+
+    if os.path.exists(ouput_file):
         print("Already found title pairs!")
         return
 
@@ -209,7 +211,7 @@ def maybe_find_title_pairs():
             and Intersects(title.geometry, other_title.geometry)""")
 
     batch_size = 100
-    f = open(title_pairs_file, mode='w')
+    f = open(ouput_file, mode='w')
 
     f.write("title_0,title_1\n")
     while True:
@@ -221,6 +223,18 @@ def maybe_find_title_pairs():
 
     f.close()
     print("Found title pairs!")
+
+def find_title_pairs():
+    from_views = [
+        "TITLE_OWNERS",
+        "TITLE_OWNERS_LAST",
+        "TITLE_OWNERS_DIRECTORS",
+        "TITLE_OWNERS_LAST_DIRECTORS",
+    ]
+
+    for view in from_views:
+        print(f"Finding title pairs for {view}")
+        maybe_find_title_pairs(view)
 
 def maybe_build_farms():
     if os.path.exists(farms_file):
@@ -313,6 +327,6 @@ def output_titles_with_groups():
 maybe_insert_titles()
 maybe_insert_owners()
 maybe_create_title_owners_views()
-maybe_find_title_pairs()
+find_title_pairs()
 maybe_build_farms()
 output_titles_with_groups()
