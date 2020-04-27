@@ -45,48 +45,6 @@ if not table_exists('spatial_ref_sys'):
     cursor.execute('SELECT InitSpatialMetaData();')
     cursor.execute("END ;")
 
-def insert_urban_areas():
-    print("Inserting urban areas")
-
-    db.execute("DROP TABLE IF EXISTS URBAN_AREAS")
-    db.execute("SELECT DiscardGeometryColumn('URBAN_AREAS', 'Geometry')")
-    db.execute("""CREATE TABLE URBAN_AREAS
-        (id INTEGER PRIMARY KEY AUTOINCREMENT)""")
-    db.execute("SELECT AddGeometryColumn('URBAN_AREAS', 'Geometry', 4326, 'POLYGON', 'XY')")
-
-    start_time = time.time()
-    values = []
-    batch_size = 1000
-    progress_report_at = 500
-
-    def commit_batch():
-        db.executemany("""INSERT INTO URBAN_AREAS VALUES
-            (NULL, PolygonFromText(?, 4326))""", values)
-        db.commit()
-        values.clear()      
-
-    for sr in iterate_covers():
-        values.append((to_wkt(sr.shape),))
-
-        if len(values) > batch_size:
-            commit_batch()
-
-        if (sr.record.oid + 1) % progress_report_at == 0:
-            print_progress((sr.record.oid + 1)/ num_covers(), start_time)
-
-    commit_batch()
-
-    db.execute("SELECT CreateSpatialIndex('URBAN_AREAS', 'Geometry')")
-
-    print("Inserted urban areas!")
-
-def maybe_insert_urban_areas():
-    if table_exists("URBAN_AREAS"):
-        print("Urban areas already inserted")
-        return
-
-    insert_urban_areas()
-
 def insert_titles():
     """We always drop the table when inserting data, to ensure everything is fresh"""
     if table_exists("TITLES"):
@@ -158,12 +116,6 @@ def maybe_insert_titles():
         return
 
     insert_titles()
-
-def maybe_create_rural_titles_view():
-    db.execute("""CREATE VIEW IF NOT EXISTS RURAL_TITLES AS
-        SELECT * FROM TITLES t
-        WHERE NOT EXISTS(SELECT * FROM URBAN_AREAS a WHERE INTERSECTS(a.Geometry, t.Geometry))""")
-    db.commit()
 
 def insert_owners():
     print("Inserting names....")
