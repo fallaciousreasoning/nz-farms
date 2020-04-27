@@ -180,16 +180,14 @@ def maybe_create_title_owners_views():
         FROM TITLES title
         INNER JOIN OWNERS owner
         ON title.id=owner.title_id
-            AND owner.is_company_director
             AND not owner.is_last_name""")
 
     # Last names and directors
-    db.execute("""CREATE VIEW IF NOT EXISTS TITLE_OWNERS__LAST_DIRECTORS AS
+    db.execute("""CREATE VIEW IF NOT EXISTS TITLE_OWNERS_LAST_DIRECTORS AS
     SELECT title.id as title_id, owner.name, title.geometry
     FROM TITLES title
     INNER JOIN OWNERS owner
     ON title.id=owner.title_id
-        AND owner.is_company_director
         AND owner.is_last_name""")
     db.commit()
 
@@ -314,7 +312,7 @@ def output_titles_with_groups():
 
 maybe_insert_titles()
 maybe_insert_owners()
-maybe_create_title_owners_view()
+maybe_create_title_owners_views()
 maybe_find_title_pairs()
 maybe_build_farms()
 output_titles_with_groups()
