@@ -156,12 +156,44 @@ def maybe_insert_owners():
 
     insert_owners()
 
-def maybe_create_title_owners_view():
+def maybe_create_title_owners_views():
+    # Normal
     db.execute("""CREATE VIEW IF NOT EXISTS TITLE_OWNERS AS
         SELECT title.id as title_id, owner.name, title.geometry
         FROM TITLES title
         INNER JOIN OWNERS owner
-        ON title.id=owner.title_id""")
+        ON title.id=owner.title_id
+            AND not owner.is_company_director
+            AND not owner.is_last_name""")
+    # Last names
+    db.execute("""CREATE VIEW IF NOT EXISTS TITLE_OWNERS_LAST AS
+        SELECT title.id as title_id, owner.name, title.geometry
+        FROM TITLES title
+        INNER JOIN OWNERS owner
+        ON title.id=owner.title_id
+            AND not owner.is_company_director
+            AND owner.is_last_name""")
+
+    # With directors
+    db.execute("""CREATE VIEW IF NOT EXISTS TITLE_OWNERS_DIRECTORS AS
+        SELECT title.id as title_id, owner.name, title.geometry
+        FROM TITLES title
+        INNER JOIN OWNERS owner
+        ON title.id=owner.title_id
+            AND owner.is_company_director
+            AND not owner.is_last_name""")
+
+    # Last names and directors
+    db.execute("""CREATE VIEW IF NOT EXISTS TITLE_OWNERS__LAST_DIRECTORS AS
+    SELECT title.id as title_id, owner.name, title.geometry
+    FROM TITLES title
+    INNER JOIN OWNERS owner
+    ON title.id=owner.title_id
+        AND owner.is_company_director
+        AND owner.is_last_name""")
+    db.commit()
+
+def maybe_create_title_owners_view():
     db.commit()
 
 def maybe_find_title_pairs():
