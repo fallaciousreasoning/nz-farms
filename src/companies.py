@@ -114,7 +114,7 @@ def maybe_build_database():
     root = get_root()
     root.companies = OOBTree.BTree()
 
-    companies = iterate_companies(lambda progress: print(f'\rProgress: {round(progress * 100, 2)}%', end=''))
+    companies = iterate_companies()
     
     commit_every_n = 5000
     company_number = 0

@@ -123,17 +123,19 @@ def insert_owners():
     db.execute("""CREATE TABLE OWNERS
         (id INTEGER PRIMARY KEY AUTOINCREMENT,
         title_id INTEGER,
-        name TEXT)""")
+        name TEXT
+        is_last_name BOOLEAN
+        is_company_director BOOLEAN)""")
 
     values = []
     batch_size = 1000
     def commit_batch():
-        db.executemany("INSERT INTO OWNERS VALUES (NULL, ?, ?)", values)
+        db.executemany("INSERT INTO OWNERS VALUES (NULL, ?, ?, ?, ?)", values)
         db.commit()
         values.clear()
 
-    for title_id, name in iterate_names():
-        values.append((title_id, name))
+    for title_id, name, is_last_name, is_from_company in iterate_names():
+        values.append((title_id, name, is_last_name, is_from_company))
 
         if len(values) > batch_size:
             commit_batch()
