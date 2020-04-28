@@ -201,9 +201,9 @@ def maybe_find_title_pairs(owners_view):
         print("Already found title pairs!")
         return
 
-    query = db.execute("""SELECT DISTINCT title.title_id, other_title.title_id
-        FROM TITLE_OWNERS title
-        INNER JOIN TITLE_OWNERS other_title
+    query = db.execute(f"""SELECT DISTINCT title.title_id, other_title.title_id
+        FROM {owners_view} title
+        INNER JOIN {owners_view} other_title
         on not title.title_id = other_title.title_id
             /*Only check one way*/
             and title.title_id < other_title.title_id
