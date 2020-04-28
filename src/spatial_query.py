@@ -18,6 +18,9 @@ title_pairs_file = "cache/title_pairs.csv"
 farms_file = "cache/farms.csv"
 farm_titles_shapefile = "output/titles"
 
+def get_filename_with_view(name, view):
+    return f'{name}-{view}'
+
 def to_wkt(shape: shapefile.Shape):
     if shape.shapeTypeName != "POLYGON":
        raise Error("Unknown shape " + shape.shapeTypeName)
@@ -195,7 +198,7 @@ def maybe_create_title_owners_view():
     db.commit()
 
 def maybe_find_title_pairs(owners_view):
-    ouput_file = f'{title_pairs_file}-{owners_view}'
+    ouput_file = get_filename_with_view(title_pairs_file, owners_view)
 
     if os.path.exists(ouput_file):
         print("Already found title pairs!")
@@ -224,20 +227,9 @@ def maybe_find_title_pairs(owners_view):
     f.close()
     print("Found title pairs!")
 
-def find_title_pairs():
-    from_views = [
-        "TITLE_OWNERS",
-        "TITLE_OWNERS_LAST",
-        "TITLE_OWNERS_DIRECTORS",
-        "TITLE_OWNERS_LAST_DIRECTORS",
-    ]
-
-    for view in from_views:
-        print(f"Finding title pairs for {view}")
-        maybe_find_title_pairs(view)
-
-def maybe_build_farms():
-    if os.path.exists(farms_file):
+def maybe_build_farms(owner_view):
+    output_file = get_filename_with_view(farms_file, owner_view)
+    if os.path.exists(output_file):
         print("Farms are already grouped!")
         return
 
@@ -279,7 +271,8 @@ def maybe_build_farms():
     print_every = 1000
     line_number = 0
 
-    with open(title_pairs_file) as f:
+    input_file = get_filename_with_view(title_pairs_file, owner_view)
+    with open(input_file) as f:
         # Skip the header line
         for line in itertools.islice(f, 1, None):
             read_bytes += len(line)
@@ -291,7 +284,7 @@ def maybe_build_farms():
             line_number += 1
     print()
 
-    with open(farms_file, mode='w') as f:
+    with open(output_file, mode='w') as f:
         f.write('group_id,title_id\n')
         for group_id, group in groups.items():
             for title in group:
@@ -299,10 +292,13 @@ def maybe_build_farms():
 
     print("Wrote farms to", farms_file)
 
-def output_titles_with_groups():
+def output_titles_with_groups(owner_view):
     print("Outputting titles shape file with farm ids")
+    input_file = get_filename_with_view(farms_file, owner_view)
+    output_file = get_filename_with_view(farm_titles_shapefile, owner_view)
+
     title_to_group_id = {}
-    with open(farms_file) as f:
+    with open(input_file) as f:
         for line in itertools.islice(f, 1, None):
             parts = [int(x) for x in line.split(',')]
 
@@ -312,7 +308,7 @@ def output_titles_with_groups():
     start_time = time.time()
     print_progress_every = 1000
 
-    writer = get_title_with_group_writer(farm_titles_shapefile)
+    writer = get_title_with_group_writer(output_file)
     for shape_record in iterate_titles():
         title_id = shape_record.record.id
         farm_id = title_to_group_id[title_id] if title_id in title_to_group_id else None
@@ -322,11 +318,22 @@ def output_titles_with_groups():
             print_progress((shape_record.record.oid + 1)/num_titles(), start_time)
 
     writer.close()
-    print("Wrote titles shape file to: " + farm_titles_shapefile)
+    print("Wrote titles shape file to: " + output_file)
 
 maybe_insert_titles()
 maybe_insert_owners()
 maybe_create_title_owners_views()
-find_title_pairs()
-maybe_build_farms()
-output_titles_with_groups()
+
+owner_views = [
+    "TITLE_OWNERS",
+    "TITLE_OWNERS_LAST",
+    "TITLE_OWNERS_DIRECTORS",
+    "TITLE_OWNERS_LAST_DIRECTORS",
+]
+for owner_view in owner_views:
+    print(f"Finding title pairs for {owner_view}")
+    maybe_find_title_pairs(owner_view)
+    print(f"Building farms for {owner_view}")
+    maybe_build_farms(owner_view)
+    print(f"Writing output shapefile for {owner_view}")
+    output_titles_with_groups(owner_view)
